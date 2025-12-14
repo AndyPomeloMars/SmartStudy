@@ -18,6 +18,7 @@ export interface Question {
   options?: string[];
   answer?: string;
   subject: string;
+  source?: string; // New field for question source
   difficulty: Difficulty;
   selected: boolean;
 }
@@ -27,9 +28,18 @@ export interface ChatMessage {
   role: 'user' | 'model';
   content: string;
   timestamp: number;
+  attachment?: string; // Base64 string of the image
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  updatedAt: number;
 }
 
 export enum ViewState {
+  DASHBOARD = 'DASHBOARD',
   UPLOAD = 'UPLOAD',
   BANK = 'BANK',
   PRINT = 'PRINT',
@@ -38,4 +48,13 @@ export enum ViewState {
   SETTINGS = 'SETTINGS'
 }
 
-export type ThemeColor = 'indigo' | 'rose' | 'blue' | 'emerald' | 'violet';
+export type ThemeColor = 'neutral' | 'indigo' | 'rose' | 'blue' | 'emerald' | 'violet';
+export type Language = 'en' | 'zh';
+
+export interface UploadedFile {
+  id: string;
+  file: File;
+  previewUrl: string;
+  status: 'pending' | 'queued' | 'processing' | 'completed' | 'error';
+  error?: string;
+}

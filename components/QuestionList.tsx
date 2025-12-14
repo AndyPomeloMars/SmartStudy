@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Question, Difficulty, ThemeColor, QuestionType } from '../types';
-import { Trash2, CheckSquare, Square, Tag, Filter, XCircle, Sparkles, Layers, BookOpen, Search, PlusCircle, CheckCircle2, Edit3, MoreHorizontal } from 'lucide-react';
+import { Question, Difficulty, ThemeColor, QuestionType, Language } from '../types';
+import { Trash2, CheckSquare, Square, Tag, Filter, XCircle, Sparkles, Layers, BookOpen, Search, PlusCircle, CheckCircle2, Edit3, MoreHorizontal, Save, X } from 'lucide-react';
 import { LatexRenderer } from './LatexRenderer';
 
 interface QuestionListProps {
@@ -15,6 +15,7 @@ interface QuestionListProps {
   addMultipleToExam: (questions: Question[]) => void;
   removeFromExam: (id: string) => void;
   examQuestions: Question[];
+  lang: Language;
 }
 
 export const QuestionList: React.FC<QuestionListProps> = ({ 
@@ -28,7 +29,8 @@ export const QuestionList: React.FC<QuestionListProps> = ({
   addToExam,
   addMultipleToExam,
   removeFromExam,
-  examQuestions
+  examQuestions,
+  lang
 }) => {
   const [filterSubject, setFilterSubject] = useState<string>('All');
   const [filterType, setFilterType] = useState<string>('All');
@@ -39,6 +41,9 @@ export const QuestionList: React.FC<QuestionListProps> = ({
   const [isBulkEditing, setIsBulkEditing] = useState(false);
   const [bulkSubject, setBulkSubject] = useState('');
   const [bulkDifficulty, setBulkDifficulty] = useState<string>('');
+
+  // Single Question Edit State
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
 
   const subjects = useMemo(() => {
     const s = new Set(questions.map(q => q.subject).filter(Boolean));
@@ -93,6 +98,14 @@ export const QuestionList: React.FC<QuestionListProps> = ({
     setIsBulkEditing(false);
     setBulkSubject('');
     setBulkDifficulty('');
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingQuestion) {
+      onUpdateQuestion(editingQuestion.id, editingQuestion);
+      setEditingQuestion(null);
+    }
   };
 
   if (questions.length === 0) {
@@ -322,6 +335,11 @@ export const QuestionList: React.FC<QuestionListProps> = ({
                             <Tag className="w-3 h-3" />
                             {q.subject}
                         </span>
+                        {q.source && (
+                             <span className="text-xs text-slate-400 flex items-center gap-1 border-l border-slate-200 pl-2 ml-1">
+                                {q.source}
+                             </span>
+                        )}
                      </div>
 
                      <div className="text-slate-800 text-sm font-serif line-clamp-2 md:line-clamp-1">
@@ -357,6 +375,17 @@ export const QuestionList: React.FC<QuestionListProps> = ({
                         {isInExam ? 'Added' : 'Add'}
                       </button>
 
+                      <button
+                         onClick={(e) => {
+                             e.stopPropagation();
+                             setEditingQuestion(q);
+                         }}
+                         className="p-1.5 text-slate-300 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                         title="Edit Question"
+                      >
+                         <Edit3 className="w-4 h-4" />
+                      </button>
+
                       <button 
                           onClick={(e) => {
                               e.stopPropagation();
@@ -372,6 +401,113 @@ export const QuestionList: React.FC<QuestionListProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Edit Question Modal */}
+      {editingQuestion && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <form onSubmit={handleSaveEdit} className="flex flex-col h-full">
+                    <div className="flex items-center justify-between p-6 border-b border-slate-100">
+                        <h3 className="text-lg font-bold text-slate-900">Edit Question</h3>
+                        <button type="button" onClick={() => setEditingQuestion(null)} className="text-slate-400 hover:text-slate-600">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    
+                    <div className="p-6 space-y-6">
+                        <div className="space-y-4">
+                             <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Question Content (Markdown/LaTeX)</label>
+                                <textarea
+                                    value={editingQuestion.originalText}
+                                    onChange={(e) => setEditingQuestion({...editingQuestion, originalText: e.target.value})}
+                                    rows={5}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-serif focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                                <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100 text-sm text-slate-700 font-serif">
+                                    <p className="text-xs text-slate-400 mb-1 uppercase font-bold">Preview</p>
+                                    <LatexRenderer>{editingQuestion.originalText}</LatexRenderer>
+                                </div>
+                             </div>
+
+                             <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Answer Key</label>
+                                <textarea
+                                    value={editingQuestion.answer || ''}
+                                    onChange={(e) => setEditingQuestion({...editingQuestion, answer: e.target.value})}
+                                    rows={2}
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-serif focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    placeholder="Enter the correct answer/explanation here"
+                                />
+                             </div>
+
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Subject</label>
+                                    <input 
+                                        type="text"
+                                        value={editingQuestion.subject}
+                                        onChange={(e) => setEditingQuestion({...editingQuestion, subject: e.target.value})}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Source / Origin</label>
+                                    <input 
+                                        type="text"
+                                        value={editingQuestion.source || ''}
+                                        onChange={(e) => setEditingQuestion({...editingQuestion, source: e.target.value})}
+                                        placeholder="e.g. 2023 Final Exam"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    />
+                                </div>
+                             </div>
+
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Difficulty</label>
+                                    <select
+                                        value={editingQuestion.difficulty}
+                                        onChange={(e) => setEditingQuestion({...editingQuestion, difficulty: e.target.value as Difficulty})}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    >
+                                        {Object.values(Difficulty).map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                     <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Type</label>
+                                     <select
+                                        value={editingQuestion.type}
+                                        onChange={(e) => setEditingQuestion({...editingQuestion, type: e.target.value as QuestionType})}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    >
+                                        {Object.values(QuestionType).map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-xl">
+                        <button 
+                            type="button" 
+                            onClick={() => setEditingQuestion(null)}
+                            className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            type="submit"
+                            className={`px-4 py-2 bg-${themeColor}-600 text-white rounded-lg text-sm font-medium hover:bg-${themeColor}-700 flex items-center gap-2`}
+                        >
+                            <Save className="w-4 h-4" />
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
       )}
     </div>

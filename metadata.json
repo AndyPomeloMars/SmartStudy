@@ -1,5 +1,7 @@
 {
   "name": "SmartStudy",
   "description": "An intelligent study assistant that scans questions from images, organizes them into a printable question bank, and provides AI tutoring.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "camera"
+  ]
 }

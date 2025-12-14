@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Question, ThemeColor } from '../types';
-import { Printer, BookOpen, ArrowUp, ArrowDown, X, GripVertical, FileText } from 'lucide-react';
+import { Question, ThemeColor, Language } from '../types';
+import { Printer, BookOpen, ArrowUp, ArrowDown, X, GripVertical, FileText, Save } from 'lucide-react';
 import { LatexRenderer } from './LatexRenderer';
 
 interface PrintPreviewProps {
@@ -8,11 +8,18 @@ interface PrintPreviewProps {
   themeColor: ThemeColor;
   onReorder: (questions: Question[]) => void;
   onRemove: (id: string) => void;
+  lang: Language;
 }
 
-export const PrintPreview: React.FC<PrintPreviewProps> = ({ questions, themeColor, onReorder, onRemove }) => {
-  const [examTitle, setExamTitle] = useState('Assessment Worksheet');
-  const [showAnswers, setShowAnswers] = useState(false);
+export const PrintPreview: React.FC<PrintPreviewProps> = ({ questions, themeColor, onReorder, onRemove, lang }) => {
+  const [examTitle, setExamTitle] = useState(() => {
+    const saved = localStorage.getItem('savedExam');
+    try {
+      return saved ? JSON.parse(saved).title : 'Assessment Worksheet';
+    } catch (e) {
+      return 'Assessment Worksheet';
+    }
+  });
   
   // Reorder logic
   const moveQuestion = (index: number, direction: 'up' | 'down') => {
@@ -26,6 +33,21 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ questions, themeColo
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleSave = () => {
+    const data = {
+      title: examTitle,
+      questions: questions
+    };
+    try {
+      localStorage.setItem('savedExam', JSON.stringify(data));
+      // In a real app we might use a toast, here we use a simple alert for feedback
+      alert('Exam configuration saved successfully!');
+    } catch (e) {
+      console.error('Failed to save exam', e);
+      alert('Failed to save exam.');
+    }
   };
 
   if (questions.length === 0) {
@@ -65,25 +87,24 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ questions, themeColo
                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
              />
            </div>
-
-           <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="showAnswers"
-                checked={showAnswers}
-                onChange={(e) => setShowAnswers(e.target.checked)}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <label htmlFor="showAnswers" className="text-sm text-slate-700">Include Answer Key at end</label>
-           </div>
            
-           <button
-             onClick={handlePrint}
-             className={`w-full bg-${themeColor}-600 text-white px-4 py-3 rounded-lg hover:bg-${themeColor}-700 font-medium flex items-center justify-center gap-2 shadow-sm`}
-           >
-             <Printer className="w-4 h-4" />
-             Download PDF / Print
-           </button>
+           <div className="grid gap-3">
+             <button
+               onClick={handlePrint}
+               className={`w-full bg-${themeColor}-600 text-white px-4 py-3 rounded-lg hover:bg-${themeColor}-700 font-medium flex items-center justify-center gap-2 shadow-sm`}
+             >
+               <Printer className="w-4 h-4" />
+               Download PDF / Print
+             </button>
+
+             <button
+               onClick={handleSave}
+               className="w-full bg-white border border-slate-200 text-slate-700 px-4 py-3 rounded-lg hover:bg-slate-50 font-medium flex items-center justify-center gap-2 shadow-sm transition-colors"
+             >
+               <Save className="w-4 h-4" />
+               Save Progress
+             </button>
+           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto border-t border-slate-100 pt-4">
@@ -185,26 +206,6 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({ questions, themeColo
               <span>Page 1</span>
           </div>
         </div>
-
-        {/* Answer Key Page (Optional) */}
-        {showAnswers && (
-           <div className="bg-white shadow-lg p-16 min-h-[1123px] w-full max-w-[794px] mx-auto mt-8 print:shadow-none print:w-full print:max-w-none print:mx-0 print:mt-0 print-page">
-              <div className="border-b-2 border-slate-800 pb-6 mb-12">
-                 <h2 className="text-2xl font-serif font-bold text-slate-900">Answer Key</h2>
-                 <p className="text-slate-500 italic">{examTitle}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-                  {questions.map((q, i) => (
-                    <div key={q.id} className="flex items-baseline gap-4 border-b border-dotted border-slate-200 pb-2">
-                       <span className="font-bold text-slate-900 w-8">{i+1}.</span>
-                       <span className="text-slate-700 font-medium">
-                         <LatexRenderer className="inline">{q.answer || "N/A"}</LatexRenderer>
-                       </span>
-                    </div>
-                  ))}
-              </div>
-           </div>
-        )}
       </div>
     </div>
   );
